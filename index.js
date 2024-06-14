@@ -35,6 +35,9 @@ app.use(express.json()) // Para poder acceder a los datos fácilmente. Es el jso
 // Middleware CORS para habilitar solicitudes cruzadas legítimas
 app.use(cors())
 
+// Middleware para que express muestre contenido estático
+app.use(express.static('dist'))
+
 // Implementando un middleware. Recibe tres parametros (req, res, next)
 const requestLogger = (req, res, next) => {
     console.log('Method: ', req.method)
