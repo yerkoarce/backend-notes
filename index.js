@@ -1,33 +1,14 @@
-// Se importa el módulo de express
+require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const morgan = require('morgan')
+const mongoose = require('mongoose')
+const Note = require('./models/note')
 
-/* Posibles soluciones al problema de req.body = {}
-1. poner console.log en cada uno de los lugares donde aparezca req.body para debuggear la app
-2. buscar el problema en google
-*/
 
 // La función express() se asigna a la variable app
 const app = express()
 
-let notes = [
-    {
-      id: 1,
-      content: "HTML is easy",
-      important: true
-    },
-    {
-      id: 2,
-      content: "Browser can execute only JavaScript",
-      important: false
-    },
-    {
-      id: 3,
-      content: "GET and POST are the most important methods of HTTP protocol",
-      important: true
-    }
-]
 
 // Al enviar la información de la nueva nota en el body de la solicitud en formato JSON
 app.use(express.json()) // Para poder acceder a los datos fácilmente. Es el json parser de express
@@ -67,12 +48,15 @@ res.send('<h1>Hello World!</h1>')
 
 // La segunda ruta define un controlador de eventos que maneja las solicitudes get a la ruta /notes de la api
 app.get('/api/notes', (req, res) => {
-// Se responde con el método .json del objeto response(res). Express establece automaticamente el header en application/json, se convierte el objeto notes en json (string).
-res.json(notes)
+    // Se responde con el método .json del objeto response(res). Express establece automaticamente el header en application/json, se convierte el objeto notes en json (string).
+    Note.find({}).then(note => {
+        res.json(note)
+    })
 })
 
 // Se crea una ruta para para buscar un solo recurso (notes/id)
 app.get('/api/notes/:id', (req, res) => { // la parte /:id puede ser cualquier cosa (SOMETHING), una cadena arbitraria
+    /* 
     // Se accede al parametro id de la ruta a travéz del objeto req (request), se declara como Number ya que al ser json (cadena) no funcionaria el método .find para encontrar la nota
     const id = Number(req.params.id)
     const note = notes.find(note => note.id === id) // Se busca una nota con el id que coincida con el parametro
@@ -81,6 +65,11 @@ app.get('/api/notes/:id', (req, res) => { // la parte /:id puede ser cualquier c
     } else {
         res.status(404).end() // Método status para establecer el estado y end para responder la solicitud sin devolver ningún dato
     }
+    */
+   // nNueva forma de busqueda con la base de datos implementada
+   Note.findById(req.params.id).then(note => {
+    res.json(note)
+   })
    
 })
 
@@ -105,22 +94,18 @@ const generateId = () => {
 app.post('/api/notes', (req, res) => {
     const body = req.body
 
-    // Devolver 404 not found si la propiedad content de los datos recibidos no tiene contenido
-    if(!body.content){
-        return res.status(404).json({
-            error: 'Content missing'
-    })
+    if (body.content === undefined) {
+        return res.status(404).json({ error: 'Content missing' })
     }
 
-    const note = {
+    const note = new Note({
         content: body.content,
-        important: Boolean(body.important) || false,
-        id: generateId()
-    }
+        important: body.important || false
+    })
 
-    notes = notes.concat(note) // Añadir la nota al array de notas
-
-    res.json(note) // Devolver los datos recibidos como json
+    note.save().then(savedNote => {
+        res.json(savedNote)
+    })
 })
 
 // Middleware para capturar solicitudes a rutas inexistentes
@@ -131,7 +116,7 @@ const unknownEndpoint = (request, response) => {
 // Se llama al middleware de las rutas inexistentes
 app.use(unknownEndpoint)
 
-const port = process.env.PORT || 3001
+const port = process.env.PORT
 app.listen(port, () => {
     console.log(`Server running on port ${port}`)
 })
